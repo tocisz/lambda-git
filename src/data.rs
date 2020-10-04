@@ -95,12 +95,12 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
     if is_category {
         let name = name.unwrap_or_else(|| "".to_string());
         Ok(PageOrCategory::Category(
-                Category::new(r, name, trees, blobs)
+                Category::new(name, trees, blobs)
         ))
     } else if is_page {
         let name = name.unwrap_or_else(|| "".to_string());
         Ok(PageOrCategory::Page(
-            Page::new(r, name, trees, blobs)
+            Page::new(r, name, blobs)
         ))
     } else {
         Err(Error::from("Wrong tree"))
@@ -108,20 +108,26 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
 }
 
 impl Category {
-    fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>, blobs: Vec<(String,Oid)>) -> Self {
-        Category {
-            name,
-            links: vec![]
-        }
+    fn new(name: String, trees: Vec<(String,Oid)>, blobs: Vec<(String,Oid)>) -> Self {
+        let links = blobs.into_iter().map(|(title, i)|{
+            Link {title, href: format!("/{}", i.to_string())}
+        }).chain(trees.into_iter().map(|(title, i)|{
+            Link {title, href: format!("/{}", i.to_string())}
+        })).collect();
+        Category { name, links }
     }
 }
 
 impl Page {
-    fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>, blobs: Vec<(String,Oid)>) -> Self {
-        Page {
-            name,
-            cites: vec![]
-        }
+    fn new(repo: &Repository, name: String, blobs: Vec<(String,Oid)>) -> Self {
+        let cites = blobs.into_iter().map(|(_,i)| {
+            let s = get_blob_contents(repo, i).unwrap();
+            Cite::from(&s).unwrap_or_else(|_| Cite{
+                text: "".to_string(),
+                metadata: vec![Meta{ key: "error".to_string(), value: "true".to_string() }]
+            })
+        }).collect();
+        Page { name, cites }
     }
 }
 

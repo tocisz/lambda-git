@@ -6,6 +6,7 @@ extern crate log;
 
 use lambda_http::{handler, lambda, Body, Context, Request, RequestExt, Response};
 use git2::{Repository, Reference, Tree, ObjectType, Oid};
+use crate::data::Cite;
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 
@@ -90,11 +91,12 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
     if let Some(t) = tree {
         let parsed = data::parse_tree(&t);
         debug!("Returning tree response.");
-        Ok(render_to_json::render(&parsed))
+        Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
+        let cite = Cite::from(s)?;
         debug!("Returning blob response.");
-        Ok(txt_response(s)?)
+        Ok(render_to_json::render_cite(&cite))
     } else {
         error!("Wrong object hash");
         Err(Error::from("Wrong object hash"))

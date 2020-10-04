@@ -1,11 +1,19 @@
-use crate::data::PageOrCategory;
+use crate::data::{PageOrCategory, Cite};
 use lambda_http::{Response, Body};
 use serde_json::Value;
+use serde::Serialize;
 
-pub fn render(p: &PageOrCategory) -> Response<Body> {
-    let v = serde_json::to_value(p).unwrap();
+fn render(val: Value) -> Response<Body> {
     Response::builder()
         .header("content-type", "application/json; charset=utf-8")
-        .body(Body::from(v.to_string()))
+        .body(Body::from(val.to_string()))
         .unwrap()
+}
+
+pub fn render_page(p: &PageOrCategory) -> Response<Body> {
+    render(serde_json::to_value(p).unwrap())
+}
+
+pub fn render_cite(c: &Cite) -> Response<Body> {
+    render(serde_json::to_value(c).unwrap())
 }

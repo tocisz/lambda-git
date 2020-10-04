@@ -58,7 +58,7 @@ functions:
       - arn:aws:lambda:eu-west-1:988149861097:layer:git-data:2
     events:
       - http:
-          path: '/*'
+          path: '/{id}'
           method: GET
 
 #    The following are a few example events you can configure

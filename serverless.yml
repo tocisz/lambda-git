@@ -54,6 +54,8 @@ functions:
     # or `{cargo-package-name}` for short when you are building a
     # default bin for a given package.
     handler: lambda-git
+    layers:
+      - arn:aws:lambda:eu-west-1:988149861097:layer:git-data:1
     events:
       - http:
           path: '/'

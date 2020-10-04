@@ -1,6 +1,5 @@
 use git2::Tree;
 use serde::{Serialize};
-use httparse::Status;
 
 #[derive(Serialize)]
 pub enum PageOrCategory {
@@ -38,24 +37,25 @@ impl Cite {
     pub fn from(s: &str) -> Result<Cite,Error> {
         let mut meta = vec![];
 
-        let mut headers = [httparse::EMPTY_HEADER; 64];
-        let body;
-        let result = httparse::parse_headers(s.as_bytes(), &mut headers)?;
-        if let Status::Complete((pos, hrs)) = result {
-            for h in hrs {
-                meta.push(Meta{
-                    key: h.name.to_string(),
-                    value: std::str::from_utf8(h.value).unwrap().to_string()
-                })
+        let mut in_head = true;
+        for line in s.lines() {
+            if line.is_empty() {
+                in_head = false;
+            } else {
+                if in_head {
+                    let spl: Vec<&str> = line.splitn(2, ':').collect();
+                    let m = if spl.len() == 1 {
+                        Meta { key: "".to_string(), value: spl[0].to_string() }
+                    } else {
+                        Meta { key: spl[0].to_string(), value: spl[1].to_string() }
+                    };
+                    meta.push(m);
+                }
             }
-            let dd = &s.as_bytes()[pos..];
-            body = std::str::from_utf8(dd)?
-        } else {
-            body = s
         }
 
         Ok(Cite {
-            text: body.to_string(),
+            text: s.to_string(),
             metadata: meta
         })
     }

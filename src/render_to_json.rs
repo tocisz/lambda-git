@@ -1,7 +1,6 @@
 use crate::data::{PageOrCategory, Cite};
 use lambda_http::{Response, Body};
 use serde_json::Value;
-use serde::Serialize;
 
 fn render(val: Value) -> Response<Body> {
     Response::builder()

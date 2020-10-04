@@ -89,7 +89,7 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
     }
 
     if let Some(t) = tree {
-        let parsed = data::parse_tree(&t);
+        let parsed = data::parse_tree(&repo,&t)?;
         debug!("Returning tree response.");
         Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {

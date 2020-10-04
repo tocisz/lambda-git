@@ -1,4 +1,4 @@
-use git2::Tree;
+use git2::{Tree, ObjectType, Repository, Oid};
 use serde::{Serialize};
 
 #[derive(Serialize)]
@@ -70,9 +70,62 @@ pub struct Meta {
     value: String
 }
 
-pub fn parse_tree(t: &Tree) -> PageOrCategory {
-    PageOrCategory::Page(Page{
-        name: "Test".to_string(),
-        cites: vec![]
-    })
+pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
+    let mut trees = vec![];
+    let mut blobs = vec![];
+    let mut is_category = false;
+    let mut is_page = false;
+    let mut name = None;
+    for entry in tree.iter() {
+        let entry_name = entry.name().unwrap_or("").to_string();
+        let kind = entry.kind().unwrap_or(ObjectType::Any);
+        if kind == ObjectType::Tree {
+            trees.push((entry_name, entry.id()));
+        } else if kind == ObjectType::Blob {
+            if entry_name == "cat.txt" {
+                is_category = true;
+                name = Some(get_blob_contents(r, entry.id())?)
+            } else if entry_name == "art.txt" {
+                is_page = true;
+                name = Some(get_blob_contents(r, entry.id())?)
+            }
+            blobs.push((entry_name, entry.id()));
+        }
+    }
+    if is_category {
+        let name = name.unwrap_or_else(|| "".to_string());
+        Ok(PageOrCategory::Category(
+                Category::new(r, name, trees, blobs)
+        ))
+    } else if is_page {
+        let name = name.unwrap_or_else(|| "".to_string());
+        Ok(PageOrCategory::Page(
+            Page::new(r, name, trees, blobs)
+        ))
+    } else {
+        Err(Error::from("Wrong tree"))
+    }
+}
+
+impl Category {
+    fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>, blobs: Vec<(String,Oid)>) -> Self {
+        Category {
+            name,
+            links: vec![]
+        }
+    }
+}
+
+impl Page {
+    fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>, blobs: Vec<(String,Oid)>) -> Self {
+        Page {
+            name,
+            cites: vec![]
+        }
+    }
+}
+
+fn get_blob_contents(repo: &Repository, id: Oid) -> Result<String,Error> {
+    let blob = repo.find_blob(id)?;
+    Ok(std::str::from_utf8(blob.content()).unwrap().to_string())
 }

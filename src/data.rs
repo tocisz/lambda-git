@@ -110,7 +110,7 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
 impl Category {
     fn new(name: String, trees: Vec<(String,Oid)>) -> Self {
         let links = trees.into_iter().map(|(title, i)|{
-            Link {title, href: format!("/{}", i.to_string())}
+            Link {title, href: i.to_string()}
         }).collect();
         Category { name, links }
     }

@@ -1,5 +1,5 @@
-// #[macro_use]
-// extern crate log;
+#[macro_use]
+extern crate log;
 
 use lambda_http::{handler, lambda, Body, Context, IntoResponse, Request, Response, RequestExt};
 use git2::{Repository, Reference, Tree, ObjectType, Oid};
@@ -47,12 +47,13 @@ fn list_tree(tree: Tree) -> Vec<String> {
     ls_result
 }
 
-async fn handle_index(r: Request, _: Context) -> Result<Response<Body>, Error> {
+async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error> {
+    debug!("Request is {} {}", req.method(), req.uri().path());
     let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
 
     let tree;
     let blob;
-    match r.path_parameters().get("id") {
+    match req.path_parameters().get("id") {
         Some(id) => {
             let oid = Oid::from_str(id)?;
             let obj = repo.find_object(oid, None)?;
@@ -82,11 +83,14 @@ async fn handle_index(r: Request, _: Context) -> Result<Response<Body>, Error> {
     if let Some(t) = tree {
         let ls_result = list_tree(t);
         let j = ls_result.join("\n");
+        debug!("Returning tree response.");
         Ok(j.into_response())
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
+        debug!("Returning blob response.");
         Ok(s.into_response())
     } else {
+        error!("Wrong object hash");
         Err(Error::from("Wrong object hash"))
     }
 }

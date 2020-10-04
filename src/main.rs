@@ -94,7 +94,13 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
         Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
-        let cite = Cite::from(s)?;
+        let cite = match Cite::from(s) {
+            Ok(c) => Ok(c),
+            Err(e) => {
+                error!("{}", e);
+                Err(e)
+            }
+        }?;
         debug!("Returning blob response.");
         Ok(render_to_json::render_cite(&cite))
     } else {

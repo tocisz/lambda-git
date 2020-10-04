@@ -53,7 +53,7 @@ functions:
     # handler value syntax is `{cargo-package-name}.{bin-name}`
     # or `{cargo-package-name}` for short when you are building a
     # default bin for a given package.
-    handler: facebook_eliza
+    handler: lambda-git
     events:
       - http:
           path: '/'

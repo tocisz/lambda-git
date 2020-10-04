@@ -63,9 +63,10 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
 
     let tree;
     let blob;
+    let oid;
     match req.path_parameters().get("id") {
         Some(id) => {
-            let oid = Oid::from_str(id)?;
+            oid = Oid::from_str(id)?;
             let obj = repo.find_object(oid, None)?;
             let kind = obj.kind().unwrap_or(ObjectType::Any);
             match kind {
@@ -87,6 +88,7 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
             let commit = get_commit(&repo)?;
             tree = get_root_tree(&repo, commit)?;
             blob = None;
+            oid = Oid::zero();
         }
     }
 
@@ -96,7 +98,7 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
         Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
-        let cite = Cite::from(s)?;
+        let cite = Cite::from(oid, s)?;
         debug!("Returning blob response.");
         Ok(render_to_json::render_cite(&cite))
     } else {

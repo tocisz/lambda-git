@@ -28,13 +28,14 @@ pub struct Page {
 #[derive(Serialize)]
 pub struct Cite {
     text: String,
-    metadata: Vec<Meta>
+    metadata: Vec<Meta>,
+    link: String
 }
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 
 impl Cite {
-    pub fn from(s: &str) -> Result<Cite,Error> {
+    pub fn from(id: Oid, s: &str) -> Result<Cite,Error> {
         let mut meta = vec![];
         let mut body_lines = vec![];
 
@@ -59,7 +60,8 @@ impl Cite {
 
         Ok(Cite {
             text: body_lines.join("\n"),
-            metadata: meta
+            metadata: meta,
+            link: id.to_string()
         })
     }
 }
@@ -120,8 +122,9 @@ impl Page {
     fn new(repo: &Repository, name: String, blobs: Vec<(String,Oid)>) -> Self {
         let cites = blobs.into_iter().map(|(_,i)| {
             let s = get_blob_contents(repo, i).unwrap();
-            Cite::from(&s).unwrap_or_else(|_| Cite{
+            Cite::from(i, &s).unwrap_or_else(|_| Cite{
                 text: "".to_string(),
+                link: i.to_string(),
                 metadata: vec![Meta{ key: "error".to_string(), value: "true".to_string() }]
             })
         }).collect();

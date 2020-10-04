@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
 
-use lambda_http::{handler, lambda, Body, Context, IntoResponse, Request, Response, RequestExt};
+use lambda_http::{handler, lambda, Body, Context, Request, Response, RequestExt};
 use git2::{Repository, Reference, Tree, ObjectType, Oid};
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
@@ -84,11 +84,11 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
         let ls_result = list_tree(t);
         let j = ls_result.join("\n");
         debug!("Returning tree response.");
-        Ok(j.into_response())
+        Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(j))?)
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
         debug!("Returning blob response.");
-        Ok(s.into_response())
+        Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(s))?)
     } else {
         error!("Wrong object hash");
         Err(Error::from("Wrong object hash"))

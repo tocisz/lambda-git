@@ -36,6 +36,7 @@ type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 impl Cite {
     pub fn from(s: &str) -> Result<Cite,Error> {
         let mut meta = vec![];
+        let mut body_lines = vec![];
 
         let mut in_head = true;
         for line in s.lines() {
@@ -50,12 +51,14 @@ impl Cite {
                         Meta { key: spl[0].to_string(), value: spl[1].to_string() }
                     };
                     meta.push(m);
+                } else {
+                    body_lines.push(line)
                 }
             }
         }
 
         Ok(Cite {
-            text: s.to_string(),
+            text: body_lines.join("\n"),
             metadata: meta
         })
     }

@@ -55,7 +55,7 @@ functions:
     # default bin for a given package.
     handler: lambda-git
     layers:
-      - arn:aws:lambda:eu-west-1:988149861097:layer:git-data:1
+      - arn:aws:lambda:eu-west-1:988149861097:layer:git-data:2
     events:
       - http:
           path: '/'

@@ -3,6 +3,7 @@ extern crate log;
 
 use lambda_http::{handler, lambda, Body, Context, IntoResponse, Request, RequestExt, Response};
 use std::fs::read_dir;
+use git2::{Repository, Reference, Tree, ObjectType};
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 
@@ -13,23 +14,35 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-// async fn route(req: Request, _: Context) -> Result<impl IntoResponse, Error> {
-//     debug!("Request is {} {}", req.method(), req.uri().path());
-//     match req.uri().path() {
-//         "/" => handle_index(req).await,
-//         "/webhook" => handle_webhook(req).await,
-//         _ => handle_404(req).await,
-//     }
-// }
-
 async fn handle_index(_: Request, _: Context) -> Result<Response<Body>, Error> {
-    let mut entries = read_dir("/opt/polacy")?
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, std::io::Error>>()?;
-    let mut ps = vec![];
-    for p in entries {
-        ps.push(String::from(p.to_str().unwrap_or("")))
+    let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
+    let mut first_ref: Option<Reference> = None;
+    let mut refs = repo.references()?;
+    if let Some(r) = refs.by_ref().next() {
+        first_ref = r.ok();
     }
-    let j = ps.join(", ");
+    let first_ref = first_ref.map(|r| r.target().unwrap());
+
+    let mut tree: Option<Tree> = None;
+    if let Some(commit) = first_ref {
+        let commit_obj1 = repo.revparse_single(&commit.to_string())?;
+        let commit_obj = commit_obj1.as_commit().unwrap();
+        tree = commit_obj.tree().ok();
+    }
+
+    let mut ls_result = vec![];
+    if let Some(tree) = tree {
+        for entry in tree.iter() {
+            let name = entry.name().unwrap();
+            let kind = entry.kind().unwrap();
+            if kind == ObjectType::Tree {
+                ls_result.push(format!("[{}],{}", name, entry.id().to_string()))
+            } else {
+                ls_result.push(format!("{},{}", name, entry.id().to_string()))
+            }
+        }
+    };
+
+    let j = ls_result.join("\n");
     Ok(j.into_response())
 }

@@ -31,7 +31,8 @@ async fn handle_index(r: Request, _: Context) -> Result<Response<Body>, Error> {
     }
 
     let mut ls_result = vec![];
-    ls_result.push(r.uri().to_string());
+    let id_param = r.path_parameters().get("id").unwrap_or("").to_string();
+    ls_result.push(id_param);
     if let Some(tree) = tree {
         for entry in tree.iter() {
             let name = entry.name().unwrap();

@@ -1,7 +1,7 @@
 // #[macro_use]
 // extern crate log;
 
-use lambda_http::{handler, lambda, Body, Context, IntoResponse, Request, Response};
+use lambda_http::{handler, lambda, Body, Context, IntoResponse, Request, Response, RequestExt};
 use git2::{Repository, Reference, Tree, ObjectType, Oid};
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
@@ -23,7 +23,7 @@ fn get_commit(repo: &Repository) -> Result<Option<Oid>, Error> {
     Ok(first_ref)
 }
 
-fn get_tree(repo: &Repository, commit: Option<Oid>) -> Result<Option<Tree>, Error> {
+fn get_root_tree(repo: &Repository, commit: Option<Oid>) -> Result<Option<Tree>, Error> {
     let mut tree: Option<Tree> = None;
     if let Some(commit) = commit {
         let commit_obj1 = repo.revparse_single(&commit.to_string())?;
@@ -33,28 +33,60 @@ fn get_tree(repo: &Repository, commit: Option<Oid>) -> Result<Option<Tree>, Erro
     Ok(tree)
 }
 
-fn list_tree(tree: Option<Tree>) -> Vec<String> {
+fn list_tree(tree: Tree) -> Vec<String> {
     let mut ls_result = vec![];
-    if let Some(tree) = tree {
-        for entry in tree.iter() {
-            let name = entry.name().unwrap_or("");
-            let kind = entry.kind().unwrap_or(ObjectType::Any);
-            if kind == ObjectType::Tree {
-                ls_result.push(format!("[{}],{}", name, entry.id().to_string()))
-            } else {
-                ls_result.push(format!("{},{}", name, entry.id().to_string()))
-            }
+    for entry in tree.iter() {
+        let name = entry.name().unwrap_or("");
+        let kind = entry.kind().unwrap_or(ObjectType::Any);
+        if kind == ObjectType::Tree {
+            ls_result.push(format!("[{}],{}", name, entry.id().to_string()))
+        } else {
+            ls_result.push(format!("{},{}", name, entry.id().to_string()))
         }
-    };
+    }
     ls_result
 }
 
-async fn handle_index(_r: Request, _: Context) -> Result<Response<Body>, Error> {
+async fn handle_index(r: Request, _: Context) -> Result<Response<Body>, Error> {
     let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
 
-    let commit = get_commit(&repo)?;
-    let tree = get_tree(&repo, commit)?;
-    let ls_result = list_tree(tree);
-    let j = ls_result.join("\n");
-    Ok(j.into_response())
+    let tree;
+    let blob;
+    match r.path_parameters().get("id") {
+        Some(id) => {
+            let oid = Oid::from_str(id)?;
+            let obj = repo.find_object(oid, None)?;
+            let kind = obj.kind().unwrap_or(ObjectType::Any);
+            match kind {
+                ObjectType::Tree => {
+                    tree = Some(repo.find_tree(oid)?);
+                    blob = None;
+                },
+                ObjectType::Blob => {
+                    blob = Some(repo.find_blob(oid)?);
+                    tree = None;
+                },
+                _ => {
+                    tree = None;
+                    blob = None;
+                }
+            }
+        },
+        None => {
+            let commit = get_commit(&repo)?;
+            tree = get_root_tree(&repo, commit)?;
+            blob = None;
+        }
+    }
+
+    if let Some(t) = tree {
+        let ls_result = list_tree(t);
+        let j = ls_result.join("\n");
+        Ok(j.into_response())
+    } else if let Some(b) = blob {
+        let s = std::str::from_utf8(b.content())?;
+        Ok(s.into_response())
+    } else {
+        Err(Error::from("Wrong object hash"))
+    }
 }

@@ -1,8 +1,12 @@
+mod data;
+mod render_to_json;
+
 #[macro_use]
 extern crate log;
 
-use lambda_http::{handler, lambda, Body, Context, Request, Response, RequestExt};
+use lambda_http::{handler, lambda, Body, Context, Request, RequestExt, Response};
 use git2::{Repository, Reference, Tree, ObjectType, Oid};
+use crate::data::Cite;
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 
@@ -33,6 +37,7 @@ fn get_root_tree(repo: &Repository, commit: Option<Oid>) -> Result<Option<Tree>,
     Ok(tree)
 }
 
+/*
 fn list_tree(tree: Tree) -> Vec<String> {
     let mut ls_result = vec![];
     for entry in tree.iter() {
@@ -50,6 +55,7 @@ fn list_tree(tree: Tree) -> Vec<String> {
 fn txt_response(s: &str) -> Result<Response<Body>, Error> {
     Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(s))?)
 }
+*/
 
 async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error> {
     debug!("Request is {} {}", req.method(), req.uri().path());
@@ -85,14 +91,14 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
     }
 
     if let Some(t) = tree {
-        let ls_result = list_tree(t);
-        let j = ls_result.join("\n");
+        let parsed = data::parse_tree(&repo,&t)?;
         debug!("Returning tree response.");
-        Ok(txt_response(&j)?)
+        Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
+        let cite = Cite::from(s)?;
         debug!("Returning blob response.");
-        Ok(txt_response(s)?)
+        Ok(render_to_json::render_cite(&cite))
     } else {
         error!("Wrong object hash");
         Err(Error::from("Wrong object hash"))

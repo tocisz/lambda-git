@@ -49,7 +49,7 @@ plugins:
   - serverless-rust
 
 functions:
-  facebook_eliza:
+  lambda_git:
     # handler value syntax is `{cargo-package-name}.{bin-name}`
     # or `{cargo-package-name}` for short when you are building a
     # default bin for a given package.

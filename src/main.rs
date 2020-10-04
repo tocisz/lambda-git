@@ -14,7 +14,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn handle_index(_: Request, _: Context) -> Result<Response<Body>, Error> {
+async fn handle_index(r: Request, _: Context) -> Result<Response<Body>, Error> {
     let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
     let mut first_ref: Option<Reference> = None;
     let mut refs = repo.references()?;
@@ -31,6 +31,7 @@ async fn handle_index(_: Request, _: Context) -> Result<Response<Body>, Error> {
     }
 
     let mut ls_result = vec![];
+    ls_result.push(r.uri().to_string());
     if let Some(tree) = tree {
         for entry in tree.iter() {
             let name = entry.name().unwrap();

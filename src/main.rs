@@ -37,6 +37,7 @@ fn get_root_tree(repo: &Repository, commit: Option<Oid>) -> Result<Option<Tree>,
     Ok(tree)
 }
 
+/*
 fn list_tree(tree: Tree) -> Vec<String> {
     let mut ls_result = vec![];
     for entry in tree.iter() {
@@ -54,6 +55,7 @@ fn list_tree(tree: Tree) -> Vec<String> {
 fn txt_response(s: &str) -> Result<Response<Body>, Error> {
     Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(s))?)
 }
+*/
 
 async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error> {
     debug!("Request is {} {}", req.method(), req.uri().path());

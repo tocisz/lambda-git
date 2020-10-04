@@ -95,7 +95,7 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
     if is_category {
         let name = name.unwrap_or_else(|| "".to_string());
         Ok(PageOrCategory::Category(
-                Category::new(name, trees, blobs)
+            Category::new(name, trees)
         ))
     } else if is_page {
         let name = name.unwrap_or_else(|| "".to_string());
@@ -108,12 +108,10 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
 }
 
 impl Category {
-    fn new(name: String, trees: Vec<(String,Oid)>, blobs: Vec<(String,Oid)>) -> Self {
-        let links = blobs.into_iter().map(|(title, i)|{
+    fn new(name: String, trees: Vec<(String,Oid)>) -> Self {
+        let links = trees.into_iter().map(|(title, i)|{
             Link {title, href: format!("/{}", i.to_string())}
-        }).chain(trees.into_iter().map(|(title, i)|{
-            Link {title, href: format!("/{}", i.to_string())}
-        })).collect();
+        }).collect();
         Category { name, links }
     }
 }

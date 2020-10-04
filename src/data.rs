@@ -46,9 +46,9 @@ impl Cite {
                 if in_head {
                     let spl: Vec<&str> = line.splitn(2, ':').collect();
                     let m = if spl.len() == 1 {
-                        Meta { key: "".to_string(), value: spl[0].to_string() }
+                        Meta { key: "".to_string(), value: spl[0].trim().to_string() }
                     } else {
-                        Meta { key: spl[0].to_string(), value: spl[1].to_string() }
+                        Meta { key: spl[0].trim().to_string(), value: spl[1].trim().to_string() }
                     };
                     meta.push(m);
                 } else {

@@ -47,6 +47,10 @@ fn list_tree(tree: Tree) -> Vec<String> {
     ls_result
 }
 
+fn txt_response(s: &str) -> Result<Response<Body>, Error> {
+    Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(s))?)
+}
+
 async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error> {
     debug!("Request is {} {}", req.method(), req.uri().path());
     let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
@@ -84,11 +88,11 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
         let ls_result = list_tree(t);
         let j = ls_result.join("\n");
         debug!("Returning tree response.");
-        Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(j))?)
+        Ok(txt_response(&j)?)
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
         debug!("Returning blob response.");
-        Ok(Response::builder().header("content-type", "text/plain; charset=utf-8").body(Body::from(s))?)
+        Ok(txt_response(s)?)
     } else {
         error!("Wrong object hash");
         Err(Error::from("Wrong object hash"))

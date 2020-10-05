@@ -58,8 +58,6 @@ fn txt_response(s: &str) -> Result<Response<Body>, Error> {
 async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error> {
     debug!("Request is {} {}", req.method(), req.uri().path());
     let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
-    let mut config = repo.config()?;
-    config.set_i32("core.abbrev",3);
 
     let tree;
     let blob;

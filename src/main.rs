@@ -5,7 +5,7 @@ mod render_to_json;
 extern crate log;
 
 use lambda_http::{handler, lambda, Body, Context, Request, RequestExt, Response};
-use git2::{Repository, Reference, Tree, ObjectType, Oid};
+use git2::{Repository, Tree, ObjectType, Oid};
 use crate::data::Cite;
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
@@ -18,22 +18,20 @@ async fn main() -> Result<(), Error> {
 }
 
 fn get_commit(repo: &Repository) -> Result<Option<Oid>, Error> {
-    let mut first_ref: Option<Reference> = None;
-    let mut refs = repo.references()?;
-    if let Some(r) = refs.by_ref().next() {
-        first_ref = r.ok();
-    }
-    let first_ref = first_ref.map(|r| r.target().unwrap());
-    Ok(first_ref)
+    let result = if let Some(r) = repo.references()?.next() {
+        Some(r.map(|r| r.target().unwrap())?)
+    } else {
+        None
+    };
+    Ok(result)
 }
 
-fn get_root_tree(repo: &Repository, commit: Option<Oid>) -> Result<Option<Tree>, Error> {
-    let mut tree: Option<Tree> = None;
-    if let Some(commit) = commit {
-        let commit_obj1 = repo.revparse_single(&commit.to_string())?;
-        let commit_obj = commit_obj1.as_commit().unwrap();
-        tree = commit_obj.tree().ok();
-    }
+fn get_root_tree(repo: &Repository, commit_id: Option<Oid>) -> Result<Option<Tree>, Error> {
+    let tree = if let Some(id) = commit_id {
+        Some(repo.find_commit(id)?.tree()?)
+    } else {
+        None
+    };
     Ok(tree)
 }
 

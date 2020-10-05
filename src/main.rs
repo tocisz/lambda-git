@@ -5,7 +5,7 @@ mod render_to_json;
 extern crate log;
 
 use lambda_http::{handler, lambda, Body, Context, Request, RequestExt, Response};
-use git2::{Repository, Tree, ObjectType, Oid};
+use git2::{Repository, Tree, ObjectType, Oid, Blob};
 use crate::data::Cite;
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
@@ -59,39 +59,26 @@ async fn handle_index(req: Request, _: Context) -> Result<Response<Body>, Error>
     debug!("Request is {} {}", req.method(), req.uri().path());
     let repo = Repository::open_bare("/opt/wikiquotes-ludzie")?;
 
-    let tree;
-    let blob;
-    let oid;
     match req.path_parameters().get("id") {
         Some(id) => {
-            oid = Oid::from_str(id)?;
-            let obj = repo.find_object(oid, None)?;
-            let kind = obj.kind().unwrap_or(ObjectType::Any);
-            match kind {
-                ObjectType::Tree => {
-                    tree = Some(repo.find_tree(oid)?);
-                    blob = None;
-                },
-                ObjectType::Blob => {
-                    blob = Some(repo.find_blob(oid)?);
-                    tree = None;
-                },
-                _ => {
-                    tree = None;
-                    blob = None;
-                }
-            }
+            let obj = repo.revparse_single(id)?;
+            let tree = obj.as_tree();
+            let blob = obj.as_blob();
+            let oid = obj.id();
+            render(&repo, tree, blob, oid)
         },
         None => {
             let commit = get_commit(&repo)?;
-            tree = get_root_tree(&repo, commit)?;
-            blob = None;
-            oid = Oid::zero();
+            let tree = get_root_tree(&repo, commit)?;
+            render(&repo, tree.as_ref(), None, Oid::zero())
         }
     }
 
+}
+
+fn render(repo: &Repository, tree: Option<&Tree>, blob: Option<&Blob>, oid: Oid) -> Result<Response<Body>, Error> {
     if let Some(t) = tree {
-        let parsed = data::parse_tree(&repo,&t)?;
+        let parsed = data::parse_tree(repo,&t)?;
         debug!("Returning tree response.");
         Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {

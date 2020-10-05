@@ -35,7 +35,7 @@ pub struct Cite {
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 
 impl Cite {
-    pub fn from(id: Oid, s: &str) -> Result<Cite,Error> {
+    pub fn from(repo: &Repository, id: Oid, s: &str) -> Result<Cite,Error> {
         let mut meta = vec![];
         let mut body_lines = vec![];
 
@@ -61,7 +61,7 @@ impl Cite {
         Ok(Cite {
             text: body_lines.join("\n"),
             metadata: meta,
-            link: id.to_string()
+            link: short_id(repo, id)?
         })
     }
 }
@@ -109,16 +109,20 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
     }
 }
 
+fn short_id(repo: &Repository, i: Oid) -> Result<String, git2::Error> {
+    repo.find_object(i, None).and_then(|o| {
+        o.short_id().and_then(|o| {
+            o.as_str().map(|s|{
+                s.to_string()
+            }).ok_or_else(|| git2::Error::from_str("can't unwrap short hash"))
+        })
+    })
+}
+
 impl Category {
     fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>) -> Self {
         let links = trees.into_iter().map(|(title, i)|{
-            repo.find_object(i, None).and_then(|o|{
-                o.short_id().and_then(|o|{
-                    o.as_str().and_then(|o|
-                        Some(Link {title, href: o.to_string()})
-                    ).ok_or_else(|| git2::Error::from_str("can't unwrap short hash"))
-                })
-            })
+            short_id(repo, i).map(|href| Link {title, href})
         }).filter_map(|x|{ // log and ignore errors
             match x {
                 Err(e) => {
@@ -139,7 +143,7 @@ impl Page {
                 Ok(None)
             } else {
                 get_blob_contents(repo, i).and_then(|s|{
-                    Cite::from(i, &s).map(|c| Some(c))
+                    Cite::from(repo, i, &s).map(|c| Some(c))
                 })
             }
         }).filter_map(|x|{ // log and ignore errors

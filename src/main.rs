@@ -5,7 +5,7 @@ mod render_to_json;
 extern crate log;
 
 use lambda_http::{handler, lambda, Body, Context, Request, RequestExt, Response};
-use git2::{Repository, Tree, ObjectType, Oid, Blob};
+use git2::{Repository, Tree, Oid, Blob};
 use crate::data::Cite;
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
@@ -83,7 +83,7 @@ fn render(repo: &Repository, tree: Option<&Tree>, blob: Option<&Blob>, oid: Oid)
         Ok(render_to_json::render_page(&parsed))
     } else if let Some(b) = blob {
         let s = std::str::from_utf8(b.content())?;
-        let cite = Cite::from(oid, s)?;
+        let cite = Cite::from(repo, oid, s)?;
         debug!("Returning blob response.");
         Ok(render_to_json::render_cite(&cite))
     } else {

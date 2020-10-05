@@ -97,7 +97,7 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
     if is_category {
         let name = name.unwrap_or_else(|| "".to_string());
         Ok(PageOrCategory::Category(
-            Category::new(name, trees)
+            Category::new(r, name, trees)
         ))
     } else if is_page {
         let name = name.unwrap_or_else(|| "".to_string());
@@ -110,9 +110,12 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
 }
 
 impl Category {
-    fn new(name: String, trees: Vec<(String,Oid)>) -> Self {
+    fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>) -> Self {
         let links = trees.into_iter().map(|(title, i)|{
-            Link {title, href: i.to_string()}
+            let o = repo.find_object(i, None).unwrap(); // ?
+            let o = o.short_id().unwrap();
+            let o = o.as_str().unwrap();
+            Link {title, href: o.to_string()}
         }).collect();
         Category { name, links }
     }

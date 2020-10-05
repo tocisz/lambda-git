@@ -142,8 +142,8 @@ impl Page {
             if entry_name == "art.txt" {
                 Ok(None)
             } else {
-                get_blob_contents(repo, i).and_then(|s|{
-                    Cite::from(repo, i, &s).map(|c| Some(c))
+                get_blob_contents(repo, i).map(|s|{
+                    Cite::from(repo, i, &s).ok()
                 })
             }
         }).filter_map(|x|{ // log and ignore errors

@@ -120,13 +120,17 @@ impl Category {
 
 impl Page {
     fn new(repo: &Repository, name: String, blobs: Vec<(String,Oid)>) -> Self {
-        let cites = blobs.into_iter().map(|(_,i)| {
-            let s = get_blob_contents(repo, i).unwrap();
-            Cite::from(i, &s).unwrap_or_else(|_| Cite{
-                text: "".to_string(),
-                link: i.to_string(),
-                metadata: vec![Meta{ key: "error".to_string(), value: "true".to_string() }]
-            })
+        let cites = blobs.into_iter().filter_map(|(entry_name, i)| {
+            if entry_name == "art.txt" {
+                None
+            } else {
+                let s = get_blob_contents(repo, i).unwrap();
+                Some(Cite::from(i, &s).unwrap_or_else(|_| Cite {
+                    text: "".to_string(),
+                    link: i.to_string(),
+                    metadata: vec![Meta { key: "error".to_string(), value: "true".to_string() }]
+                }))
+            }
         }).collect();
         Page { name, cites }
     }

@@ -139,11 +139,7 @@ impl Page {
                 Ok(None)
             } else {
                 get_blob_contents(repo, i).and_then(|s|{
-                    Ok(Some(Cite::from(i, &s).unwrap_or_else(|_| Cite {
-                        text: "".to_string(),
-                        link: i.to_string(),
-                        metadata: vec![Meta { key: "error".to_string(), value: "true".to_string() }]
-                    })))
+                    Cite::from(i, &s).map(|c| Some(c))
                 })
             }
         }).filter_map(|x|{ // log and ignore errors

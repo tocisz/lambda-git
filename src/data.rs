@@ -112,10 +112,21 @@ pub fn parse_tree(r: &Repository, tree: &Tree) -> Result<PageOrCategory,Error> {
 impl Category {
     fn new(repo: &Repository, name: String, trees: Vec<(String,Oid)>) -> Self {
         let links = trees.into_iter().map(|(title, i)|{
-            let o = repo.find_object(i, None).unwrap(); // ?
-            let o = o.short_id().unwrap();
-            let o = o.as_str().unwrap();
-            Link {title, href: o.to_string()}
+            repo.find_object(i, None).and_then(|o|{
+                o.short_id().and_then(|o|{
+                    o.as_str().and_then(|o|
+                        Some(Link {title, href: o.to_string()})
+                    ).ok_or_else(|| git2::Error::from_str("can't unwrap short hash"))
+                })
+            })
+        }).filter_map(|x|{ // log and ignore errors
+            match x {
+                Err(e) => {
+                    warn!("Error when getting page link {}", e);
+                    None
+                },
+                Ok(o) => Some(o)
+            }
         }).collect();
         Category { name, links }
     }
@@ -123,16 +134,25 @@ impl Category {
 
 impl Page {
     fn new(repo: &Repository, name: String, blobs: Vec<(String,Oid)>) -> Self {
-        let cites = blobs.into_iter().filter_map(|(entry_name, i)| {
+        let cites = blobs.into_iter().map(|(entry_name, i)| {
             if entry_name == "art.txt" {
-                None
+                Ok(None)
             } else {
-                let s = get_blob_contents(repo, i).unwrap();
-                Some(Cite::from(i, &s).unwrap_or_else(|_| Cite {
-                    text: "".to_string(),
-                    link: i.to_string(),
-                    metadata: vec![Meta { key: "error".to_string(), value: "true".to_string() }]
-                }))
+                get_blob_contents(repo, i).and_then(|s|{
+                    Ok(Some(Cite::from(i, &s).unwrap_or_else(|_| Cite {
+                        text: "".to_string(),
+                        link: i.to_string(),
+                        metadata: vec![Meta { key: "error".to_string(), value: "true".to_string() }]
+                    })))
+                })
+            }
+        }).filter_map(|x|{ // log and ignore errors
+            match x {
+                Err(e) => {
+                    warn!("Error when getting cite blob {}", e);
+                    None
+                },
+                Ok(o) => o
             }
         }).collect();
         Page { name, cites }
@@ -140,6 +160,5 @@ impl Page {
 }
 
 fn get_blob_contents(repo: &Repository, id: Oid) -> Result<String,Error> {
-    let blob = repo.find_blob(id)?;
-    Ok(std::str::from_utf8(blob.content()).unwrap().to_string())
+    Ok(std::str::from_utf8(repo.find_blob(id)?.content())?.to_string())
 }
